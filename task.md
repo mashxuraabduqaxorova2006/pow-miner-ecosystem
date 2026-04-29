@@ -1,0 +1,22 @@
+# Small PoW Blockchain Task Tracker
+
+- [x] Initialize project
+  - [x] Initialize Hardhat project
+  - [x] Initialize Vite (React) project
+  - [x] Install dependencies
+- [x] Smart Contracts
+  - [x] Write `MinerToken.sol` (ERC20 with mint capabilities)
+  - [x] Write `Swap.sol` (DEX)
+  - [x] Write deployment script (`scripts/deploy.js`)
+- [/] Frontend Core
+  - [ ] Implement `Blockchain.js` (PoW, SHA256, Blocks)
+  - [ ] Implement Smart Contract Interaction (`ethers.js` logic)
+- [ ] Frontend UI
+  - [ ] Wallet Connection (MetaMask)
+  - [ ] Mining interface (Trigger PoW loop, submit to chain)
+  - [ ] Token Swap interface
+  - [ ] Styling (Aesthetics and Animations)
+- [ ] Testing and Verification
+  - [ ] Start local Hardhat node
+  - [ ] Deploy contracts to localhost
+  - [ ] Run Vite dev server and test flow
