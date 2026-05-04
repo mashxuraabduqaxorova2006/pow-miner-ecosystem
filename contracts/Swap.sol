@@ -6,20 +6,40 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Swap is Ownable {
     IERC20 public token;
-    uint256 public rate = 100; // 100 MNT = 1 ETH (for demo)
+    uint256 public rate = 100; // 100 MNT = 1 ETH
+
+    mapping(string => address) public assetTokens;
 
     constructor(address _token) Ownable(msg.sender) {
         token = IERC20(_token);
     }
 
-    // Allow the contract to receive ETH
     receive() external payable {}
 
-    function swapTokensForEth(uint256 amount) public {
-        _swap(msg.sender, amount);
+    function setAssetToken(string memory asset, address tokenAddress) public onlyOwner {
+        assetTokens[asset] = tokenAddress;
     }
 
-    // Allows a relayer to pay gas for the user
+    function swapForAsset(address user, uint256 amount, string memory asset) public {
+        require(token.balanceOf(user) >= amount, "Insufficient MNT balance");
+        address assetTokenAddr = assetTokens[asset];
+        require(assetTokenAddr != address(0), "Asset not supported");
+
+        IERC20 assetToken = IERC20(assetTokenAddr);
+        uint256 assetAmount;
+        
+        if (keccak256(abi.encodePacked(asset)) == keccak256(abi.encodePacked("USD"))) {
+            assetAmount = amount * 25 / 10; // 1 MNT = 2.5 USD
+        } else if (keccak256(abi.encodePacked(asset)) == keccak256(abi.encodePacked("BTC"))) {
+            assetAmount = amount * 4 / 100000; // 1 MNT = 0.00004 BTC
+        }
+
+        require(assetToken.balanceOf(address(this)) >= assetAmount, "Insufficient asset liquidity");
+
+        token.transferFrom(user, address(this), amount);
+        assetToken.transfer(user, assetAmount);
+    }
+
     function swapFor(address user, uint256 amount) public {
         _swap(user, amount);
     }

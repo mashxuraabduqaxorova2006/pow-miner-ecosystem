@@ -24,46 +24,56 @@ async function main() {
   const swapAddress = await swap.getAddress();
   console.log("Swap deployed to:", swapAddress);
 
-  // Set swap contract in MinerToken
+  // Deploy USD and BTC MockTokens
+  const MockToken = await hre.ethers.getContractFactory("MockToken");
+  
+  const usdToken = await MockToken.deploy("USD Tether", "USDT");
+  await usdToken.waitForDeployment();
+  const usdAddress = await usdToken.getAddress();
+  console.log("USD Token deployed to:", usdAddress);
+
+  const btcToken = await MockToken.deploy("Wrapped Bitcoin", "WBTC");
+  await btcToken.waitForDeployment();
+  const btcAddress = await btcToken.getAddress();
+  console.log("BTC Token deployed to:", btcAddress);
+
+  // Setup Swap contract
   await minerToken.setSwapContract(swapAddress);
-  console.log("Swap contract set in MinerToken");
+  await swap.setAssetToken("USD", usdAddress);
+  await swap.setAssetToken("BTC", btcAddress);
+  console.log("Swap contract setup complete.");
 
-  // Send some ETH to Swap contract for testing
-  const tx = await deployer.sendTransaction({
-    to: swapAddress,
-    value: hre.ethers.parseEther("10.0")
-  });
-  await tx.wait();
-  console.log("Sent 10 ETH to Swap contract");
+  // Fund Swap contract
+  await deployer.sendTransaction({ to: swapAddress, value: hre.ethers.parseEther("100.0") });
+  await usdToken.mint(swapAddress, hre.ethers.parseUnits("1000000", 18));
+  await btcToken.mint(swapAddress, hre.ethers.parseUnits("100", 18));
+  console.log("Swap contract funded with ETH, USD, and BTC.");
 
-  // Save the address and ABI to the frontend
+  // Save config
   const config = {
     MinerToken: minerTokenAddress,
     Swap: swapAddress,
+    USD: usdAddress,
+    BTC: btcAddress
   };
 
   const frontendDir = path.join(__dirname, "..", "frontend", "src", "contract");
-  if (!fs.existsSync(frontendDir)) {
-    fs.mkdirSync(frontendDir, { recursive: true });
-  }
+  if (!fs.existsSync(frontendDir)) fs.mkdirSync(frontendDir, { recursive: true });
 
-  fs.writeFileSync(
-    path.join(frontendDir, "config.json"),
-    JSON.stringify(config, null, 2)
-  );
+  fs.writeFileSync(path.join(frontendDir, "config.json"), JSON.stringify(config, null, 2));
 
   // Copy ABIs
-  const minerTokenArtifact = hre.artifacts.readArtifactSync("MinerToken");
-  fs.writeFileSync(
-    path.join(frontendDir, "MinerToken.json"),
-    JSON.stringify(minerTokenArtifact.abi, null, 2)
-  );
+  const abis = {
+    "MinerToken": minerToken,
+    "Swap": swap,
+    "USD": usdToken,
+    "BTC": btcToken
+  };
 
-  const swapArtifact = hre.artifacts.readArtifactSync("Swap");
-  fs.writeFileSync(
-    path.join(frontendDir, "Swap.json"),
-    JSON.stringify(swapArtifact.abi, null, 2)
-  );
+  for (const [name, contract] of Object.entries(abis)) {
+    const artifact = hre.artifacts.readArtifactSync(name === "USD" || name === "BTC" ? "MockToken" : name);
+    fs.writeFileSync(path.join(frontendDir, `${name}.json`), JSON.stringify(artifact.abi, null, 2));
+  }
 
   console.log("Frontend config and ABIs updated.");
 }
